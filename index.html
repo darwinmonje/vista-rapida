@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Compartir Ubicación</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body { font-family: sans-serif; margin: 0; padding: 16px; }
+    #map { height: 350px; width: 100%; margin-top: 12px; border-radius: 8px; }
+    button, input { padding: 10px; font-size: 16px; margin: 4px 0; width: 100%; box-sizing: border-box; }
+  </style>
+</head>
+<body>
+
+  <!-- VISTA 1: GENERAR ENLACE Y VER UBICACIÓN -->
+  <div id="adminView" style="display:none;">
+    <h3>Generar enlace de ubicación</h3>
+    <button onclick="crearEnlace()">Generar nuevo enlace</button>
+    <input type="text" id="linkOutput" readonly placeholder="Aquí aparecerá tu enlace..." />
+    <p id="statusAdmin">Esperando coordenadas...</p>
+    <div id="map"></div>
+  </div>
+
+  <!-- VISTA 2: PERSONA QUE ABRE EL ENLACE -->
+  <div id="guestView" style="display:none;">
+    <h3>Solicitud de ubicación</h3>
+    <p>Al presionar el botón, tu navegador te pedirá permiso para compartir tu ubicación GPS.</p>
+    <button onclick="enviarUbicacion()">Compartir mi ubicación</button>
+    <p id="statusGuest"></p>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+    // 1. Reemplaza con los datos de tu proyecto Firebase
+    const firebaseConfig = {
+      apiKey: "BHjrCn0dyGq4hls8zL_X5e0Hirbq1Ci0NuTV3acum_-Tc05JVqBJfMxfqeGTpCAHZwvXpN4KKz1i_aZ_Q-DiSvQ",
+      authDomain: "ubicacion-app-bd6fc.firebaseapp.com",
+      databaseURL:"https://ubicacion-app-bd6fc-default-rtdb.firebaseio.com",
+      projectId: "ubicacion-app-bd6fc"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("id");
+
+    // Si la URL tiene ?id=..., mostramos la vista de invitado; si no, la de creador
+    if (sessionId) {
+      document.getElementById("guestView").style.display = "block";
+    } else {
+      document.getElementById("adminView").style.display = "block";
+    }
+
+    // Función para crear el enlace único
+    window.crearEnlace = () => {
+      const id = "loc_" + Math.random().toString(36).substring(2, 10);
+      const url = `${window.location.origin}${window.location.pathname}?id=${id}`;
+      document.getElementById("linkOutput").value = url;
+      escucharUbicacion(id);
+    };
+
+    // Escuchar en tiempo real cuando la otra persona acepte
+    function escucharUbicacion(id) {
+      const map = L.map("map").setView([14.0818, -87.2068], 13);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+      let marker;
+
+      onValue(ref(db, "ubicaciones/" + id), (snapshot) => {
+        const data = snapshot.val();
+        if (!data) return;
+
+        const { lat, lng, accuracy } = data;
+        document.getElementById("statusAdmin").innerText =
+          `Ubicación recibida: ${lat.toFixed(6)}, ${lng.toFixed(6)} (precisión: ~${Math.round(accuracy)}m)`;
+
+        map.setView([lat, lng], 16);
+        if (marker) {
+          marker.setLatLng([lat, lng]);
+        } else {
+          marker = L.marker([lat, lng]).addTo(map);
+        }
+      });
+    }
+
+    // Solicitar GPS al usuario y enviarlo (requiere HTTPS y consentimiento del navegador)
+    window.enviarUbicacion = () => {
+      const status = document.getElementById("statusGuest");
+      if (!navigator.geolocation) {
+        status.innerText = "Tu navegador no soporta geolocalización.";
+        return;
+      }
+
+      status.innerText = "Solicitando permiso GPS...";
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          set(ref(db, "ubicaciones/" + sessionId), {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            accuracy: pos.coords.accuracy,
+            timestamp: Date.now()
+          });
+          status.innerText = "Ubicación compartida correctamente.";
+        },
+        (err) => {
+          status.innerText = "Permiso denegado o error de GPS: " + err.message;
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    };
+  </script>
+</body>
+</html
