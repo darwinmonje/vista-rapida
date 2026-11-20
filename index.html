@@ -67,20 +67,22 @@
         }).addTo(mapa);
       }
 
-      onValue(ref(db, "ubicaciones/" + id), (snapshot) => {
+            onValue(ref(db, "ubicaciones/" + id), (snapshot) => {
         const datos = snapshot.val();
-        if (!datos || !datos.lat || !datos.lng) return;
+        if (!datos) return;
 
-        const { lat, lng, accuracy, nombre } = datos;
-        const etiquetaNombre = nombre ? ` (${nombre})` : "";
+        const ubic = datos.ultimaUbicacion || datos;
+        if (!ubic.lat || !ubic.lng) return;
+
+        const etiquetaNombre = datos.nombre ? ` (${datos.nombre})` : "";
         document.getElementById("statusAdmin").innerText =
-          `Ubicación recibida${etiquetaNombre}: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+          `Ubicación recibida${etiquetaNombre}: ${ubic.lat.toFixed(6)}, ${ubic.lng.toFixed(6)}`;
 
-        mapa.setView([lat, lng], 16);
+        mapa.setView([ubic.lat, ubic.lng], 16);
         if (marcador) {
-          marcador.setLatLng([lat, lng]);
+          marcador.setLatLng([ubic.lat, ubic.lng]);
         } else {
-          marcador = L.marker([lat, lng]).addTo(mapa);
+          marcador = L.marker([ubic.lat, ubic.lng]).addTo(mapa);
         }
       });
     }
