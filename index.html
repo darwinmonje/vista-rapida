@@ -22,6 +22,9 @@
     <button type="button" onclick="copiarLink()">Copiar enlace</button>
     <p id="statusAdmin">Esperando coordenadas...</p>
     <div id="mapa"></div>
+    <h4>Historial de ubicaciones</h4>
+    <div id="listaUbicaciones">Cargando lista...</div>
+    
   </div>
 
   <!-- VISTA 2: PERSONA QUE ABRE EL ENLACE -->
@@ -46,6 +49,59 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
+        function escucharListaUbicaciones() {
+      const listaEl = document.getElementById("listaUbicaciones");
+      if (!listaEl) return;
+
+      onValue(ref(db, "ubicaciones"), (snapshot) => {
+        const todo = snapshot.val();
+        if (!todo) {
+          listaEl.innerHTML = "<p>Aún no hay registros.</p>";
+          return;
+        }
+
+        const entradas = Object.entries(todo)
+          .map(([id, item]) => {
+            const ubic = item?.ultimaUbicacion || item;
+            return {
+              id,
+              nombre: item?.nombre || "Sin nombre",
+              lat: ubic?.lat,
+              lng: ubic?.lng,
+              creadoEn: item?.creadoEn || ubic?.timestamp || 0
+            };
+          })
+          .sort((a, b) => b.creadoEn - a.creadoEn);
+
+        listaEl.innerHTML = "";
+        entradas.forEach((reg) => {
+          const card = document.createElement("div");
+          card.style.border = "1px solid #ccc";
+          card.style.padding = "8px";
+          card.style.margin = "6px 0";
+          card.style.borderRadius = "6px";
+          card.style.cursor = "pointer";
+
+          const coordsTexto =
+            typeof reg.lat === "number" && typeof reg.lng === "number"
+              ? `${reg.lat.toFixed(6)}, ${reg.lng.toFixed(6)}`
+              : "Aún sin ubicación";
+
+          card.innerHTML = `<strong>${reg.nombre}</strong><br><small>${coordsTexto}</small>`;
+
+          if (typeof reg.lat === "number" && typeof reg.lng === "number") {
+            card.onclick = () => {
+              escucharUbicacion(reg.id);
+            };
+          }
+
+          listaEl.appendChild(card);
+        });
+      });
+    }
+
+    escucharListaUbicaciones();
+
 
     const params = new URLSearchParams(window.location.search);
     const sessionId = params.get("ref") || params.get("id");
