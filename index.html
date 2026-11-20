@@ -18,6 +18,7 @@
     <h3>Generar enlace de ubicación</h3>
     <button onclick="crearEnlace()">Generar nuevo enlace</button>
     <input type="text" id="linkOutput" readonly placeholder="Aquí aparecerá tu enlace..." />
+    <button type="button" onclick="copiarLink()">Copiar enlace</button>
     <p id="statusAdmin">Esperando coordenadas...</p>
     <div id="map"></div>
   </div>
@@ -112,6 +113,25 @@
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     };
+   window.copiarLink = function () {
+  const input = document.getElementById("linkOutput");
+  if (!input || !input.value) return;
+  const texto = input.value;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(texto).catch(() => {
+      input.removeAttribute("readonly");
+      input.select();
+      document.execCommand("copy");
+      input.setAttribute("readonly", "readonly");
+    });
+  } else {
+    input.removeAttribute("readonly");
+    input.select();
+    document.execCommand("copy");
+    input.setAttribute("readonly", "readonly");
+  }
+};
+    
   </script>
 </body>
 </html
