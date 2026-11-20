@@ -79,6 +79,7 @@
           `Ubicación recibida${etiquetaNombre}: ${ubic.lat.toFixed(6)}, ${ubic.lng.toFixed(6)}`;
 
         mapa.setView([ubic.lat, ubic.lng], 16);
+        mapa.invalidateSize();
         if (marcador) {
           marcador.setLatLng([ubic.lat, ubic.lng]);
         } else {
